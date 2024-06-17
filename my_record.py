@@ -1,6 +1,5 @@
 import sys
-import datetime as datetime
-# Class to represent a Book with its borrowing details and additional attributes
+
 class Book:
     def __init__(self, book_id, name=None, book_type=None, n_copy=None, max_days=None, late_charge=None):
         self.book_id = book_id
@@ -22,21 +21,32 @@ class Book:
         max_days = max(borrow_days) if borrow_days else 0
         return n_borrow, n_reserve, (min_days, max_days)
 
-# Class to represent a Member (currently not used for any specific purpose)
+
 class Member:
     def __init__(self, member_id, first_name=None, last_name=None, dob=None, member_type=None):
         self.member_id = member_id.strip()
-        self.first_name = first_name.strip()
-        self.last_name = last_name.strip()
-        self.dob = dob.strip()  # Store the date of birth as a string without conversion
-        self.member_type = member_type.strip()
+        self.first_name = first_name.strip() if first_name else ''
+        self.last_name = last_name.strip() if last_name else ''
+        self.dob = dob.strip() if dob else ''
+        self.member_type = member_type.strip() if member_type else ''
         self.borrowed = {'Textbook': 0, 'Fiction': 0}
         self.total_borrowed_days = 0
         self.total_borrow_count = 0
 
     def add_borrowing(self, book_type, days):
-        self.borrowed[book_type] += 1
-        if isinstance(days, int):
+        book_type = book_type.strip()
+        if book_type == 'T':
+            book_type = 'Textbook'
+        elif book_type == 'F':
+            book_type = 'Fiction'
+        else:
+            print(f"Unknown book type: {book_type}")
+            return
+
+        if days == '--':
+            self.borrowed[book_type] += 1
+        elif isinstance(days, int):
+            self.borrowed[book_type] += 1
             self.total_borrowed_days += days
             self.total_borrow_count += 1
 
@@ -47,23 +57,24 @@ class Member:
             return (self.borrowed['Textbook'] <= 2 and self.borrowed['Fiction'] <= 3)
 
     def get_stats(self):
-        return {
+        stats = {
             'textbooks': self.borrowed['Textbook'],
             'fictions': self.borrowed['Fiction'],
             'complies': self.check_limits(),
             'average_days': self.calculate_average_borrowing_days() if self.total_borrow_count > 0 else 0
         }
+        return stats
 
     def calculate_average_borrowing_days(self):
         return self.total_borrowed_days / self.total_borrow_count if self.total_borrow_count else 0
 
 
-
-# Class to manage the records of books and members
 class Records:
+
     def __init__(self):
         self.books = []
-        self.members = set()  # Using set to store members
+        self.members = []
+        self.member_dict = {}  # Dictionary to store member objects
         self.total_borrowed_days = 0
         self.total_borrow_count = 0
 
@@ -72,12 +83,13 @@ class Records:
             with open(member_file_name, 'r') as file:
                 for line in file:
                     line = line.strip()
-                    if line:  # Ensure the line is not empty
+                    if line:
                         data = line.split(',')
                         if len(data) == 5:
                             member_id, first_name, last_name, dob, member_type = [item.strip() for item in data]
                             member = Member(member_id, first_name, last_name, dob, member_type)
-                            self.members.add(member)
+                            self.members.append(member)
+                            self.member_dict[member_id] = member
                         else:
                             print(f"Skipping incomplete or malformed line: {line}")
         except FileNotFoundError:
@@ -85,22 +97,7 @@ class Records:
             sys.exit(1)
 
     def find_member_by_id(self, member_id):
-        return next((member for member in self.members if member.member_id == member_id), None)
-
-    def display_members(self):
-        print("MEMBER INFORMATION")
-        print(f"{'Member ID':<10} {'FName':<15} {'LName':<15} {'Type':<10} {'DOB':<15} {'Ntextbook':>10} {'Nfiction':>10} {'Average':>10}")
-
-        member_objects = [m for m in self.members if isinstance(m, Member)]
-        for member in sorted(member_objects, key=lambda x: x.member_id):
-            stats = member.get_stats()
-            ntextbook = f"{stats['textbooks']}!" if not stats['complies'] and stats['textbooks'] > (
-                1 if member.member_type == 'Standard' else 2) else str(stats['textbooks'])
-            nfiction = f"{stats['fictions']}!" if not stats['complies'] and stats['fictions'] > (
-                2 if member.member_type == 'Standard' else 3) else str(stats['fictions'])
-            average = f"{stats['average_days']:.2f}"
-
-            print(f"{member.member_id:<10} {member.first_name:<15} {member.last_name:<15} {member.member_type:<10} {member.dob:<15} {ntextbook:>10} {nfiction:>10} {average:>10}")
+        return self.member_dict.get(member_id, None)
 
     def read_records(self, record_file_name):
         try:
@@ -123,7 +120,18 @@ class Records:
                             self.total_borrowed_days += days
                             self.total_borrow_count += 1
                         book.add_borrowed_days(member_id, days)
-                        self.members.add(member_id)
+
+                        member = self.find_member_by_id(member_id)
+                        if member:
+                            if book.book_type is None:
+                                book_type = next((b.book_type for b in self.books if b.book_id == book_id), None)
+                                if book_type:
+                                    book.book_type = book_type
+                            member.add_borrowing(book.book_type, days)
+                        else:
+                            # Only print warnings if the member list is provided
+                            if self.members:
+                                print(f"Warning: Member ID {member_id} not found in member list.")
         except FileNotFoundError:
             print(f"The file {record_file_name} does not exist.")
             sys.exit(1)
@@ -135,7 +143,7 @@ class Records:
                     data = line.strip().split(',')
                     book_id = data[0]
                     name = data[1]
-                    book_type = data[2]
+                    book_type = data[2].strip()
                     n_copy = int(data[3])
                     max_days = int(data[4])
                     late_charge = float(data[5])
@@ -159,6 +167,25 @@ class Records:
             print(f"The file {book_file_name} does not exist.")
             sys.exit(1)
 
+    def display_members(self):
+        if not self.members:
+            print("No member records to display.")
+            return
+
+        print("MEMBER INFORMATION")
+        print(f"{'Member ID':<10} {'FName':<15} {'LName':<15} {'Type':<10} {'DOB':<15} {'Ntextbook':>10} {'Nfiction':>10} {'Average':>10}")
+
+        member_objects = [m for m in self.members if isinstance(m, Member)]
+        for member in sorted(member_objects, key=lambda x: x.member_id):
+            stats = member.get_stats()
+            ntextbook = f"{stats['textbooks']}!" if not stats['complies'] and stats['textbooks'] > (
+                1 if member.member_type == 'Standard' else 2) else str(stats['textbooks'])
+            nfiction = f"{stats['fictions']}!" if not stats['complies'] and stats['fictions'] > (
+                2 if member.member_type == 'Standard' else 3) else str(stats['fictions'])
+            average = f"{stats['average_days']:.2f}"
+
+            print(f"{member.member_id:<10} {member.first_name:<15} {member.last_name:<15} {member.member_type:<10} {member.dob:<15} {ntextbook:>10} {nfiction:>10} {average:>10}")
+
     def display_records(self):
         if not self.books:
             print("No records to display.")
@@ -172,7 +199,8 @@ class Records:
         print(header)
         print('-' * len(header))
 
-        for member_id in sorted(self.members):
+        member_ids = {member.member_id for member in self.members} if self.members else {member_id for book in self.books for member_id in book.borrowed_days}  # Set of member IDs
+        for member_id in sorted(member_ids):
             row = f"{member_id:<{header_width}}"
             for book in self.books:
                 borrow_days = book.borrowed_days.get(member_id, 'xx')
@@ -180,7 +208,7 @@ class Records:
             print(row)
 
         total_books = len(self.books)
-        total_members = len(self.members)
+        total_members = len(member_ids)
         average_borrowed_days = self.total_borrowed_days / self.total_borrow_count if self.total_borrow_count else 0
         print("\nRECORDS SUMMARY")
         print(f"There are {total_members} members and {total_books} books.")
@@ -283,16 +311,26 @@ def main():
     member_file_name = sys.argv[3] if len(sys.argv) > 3 else None
 
     records = Records()
-    records.read_records(record_file_name)
-    records.display_records()
-
-    if book_file_name:
-        records.read_books(book_file_name)
-        records.display_books()
 
     if member_file_name:
         records.read_members(member_file_name)
+
+    if book_file_name:
+        records.read_books(book_file_name)
+
+    records.read_records(record_file_name)
+
+    records.display_records()
+
+    if book_file_name:
+        records.display_books()
+
+    if member_file_name:
         records.display_members()
+
+    if book_file_name or member_file_name:
+        records.save_books_to_file('reports.txt')
 
 if __name__ == "__main__":
     main()
+
