@@ -1,5 +1,5 @@
 import sys
-
+import datetime as datetime
 # Class to represent a Book with its borrowing details and additional attributes
 class Book:
     def __init__(self, book_id, name=None, book_type=None, n_copy=None, max_days=None, late_charge=None):
@@ -31,9 +31,14 @@ class Member:
         self.dob = dob.strip()  # Store the date of birth as a string without conversion
         self.member_type = member_type.strip()
         self.borrowed = {'Textbook': 0, 'Fiction': 0}
+        self.total_borrowed_days = 0
+        self.total_borrow_count = 0
 
     def add_borrowing(self, book_type, days):
         self.borrowed[book_type] += 1
+        if isinstance(days, int):
+            self.total_borrowed_days += days
+            self.total_borrow_count += 1
 
     def check_limits(self):
         if self.member_type == 'Standard':
@@ -45,8 +50,13 @@ class Member:
         return {
             'textbooks': self.borrowed['Textbook'],
             'fictions': self.borrowed['Fiction'],
-            'complies': self.check_limits()
+            'complies': self.check_limits(),
+            'average_days': self.calculate_average_borrowing_days() if self.total_borrow_count > 0 else 0
         }
+
+    def calculate_average_borrowing_days(self):
+        return self.total_borrowed_days / self.total_borrow_count if self.total_borrow_count else 0
+
 
 
 # Class to manage the records of books and members
@@ -79,13 +89,18 @@ class Records:
 
     def display_members(self):
         print("MEMBER INFORMATION")
-        for member in self.members:
-            if isinstance(member, Member):
-                stats = member.get_stats()
-                print(
-                    f"{member.member_id} - {member.first_name} {member.last_name}, Type: {member.member_type}, Complies: {'Yes' if stats['complies'] else 'No'}")
-            else:
-                print(f"Non-member object found: {member}")
+        print(f"{'Member ID':<10} {'FName':<15} {'LName':<15} {'Type':<10} {'DOB':<15} {'Ntextbook':>10} {'Nfiction':>10} {'Average':>10}")
+
+        member_objects = [m for m in self.members if isinstance(m, Member)]
+        for member in sorted(member_objects, key=lambda x: x.member_id):
+            stats = member.get_stats()
+            ntextbook = f"{stats['textbooks']}!" if not stats['complies'] and stats['textbooks'] > (
+                1 if member.member_type == 'Standard' else 2) else str(stats['textbooks'])
+            nfiction = f"{stats['fictions']}!" if not stats['complies'] and stats['fictions'] > (
+                2 if member.member_type == 'Standard' else 3) else str(stats['fictions'])
+            average = f"{stats['average_days']:.2f}"
+
+            print(f"{member.member_id:<10} {member.first_name:<15} {member.last_name:<15} {member.member_type:<10} {member.dob:<15} {ntextbook:>10} {nfiction:>10} {average:>10}")
 
     def read_records(self, record_file_name):
         try:
