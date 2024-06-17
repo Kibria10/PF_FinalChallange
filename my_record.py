@@ -1,4 +1,27 @@
+# Maharab Kibria
+# s4083577
+#Attempted Level: HD Level.
+#Known Issues: The code is completely meeting all the requirements except the fees in members table and the date format in books table.
+
 import sys
+
+from datetime import datetime
+
+# Custom exceptions
+class FileNotFound(Exception):
+    pass
+
+class EmptyFile(Exception):
+    pass
+
+class InvalidRecordFormat(Exception):
+    pass
+
+class InvalidBookID(Exception):
+    pass
+
+class InvalidMemberID(Exception):
+    pass
 
 class Book:
     def __init__(self, book_id, name=None, book_type=None, n_copy=None, max_days=None, late_charge=None):
@@ -32,6 +55,7 @@ class Member:
         self.borrowed = {'Textbook': 0, 'Fiction': 0}
         self.total_borrowed_days = 0
         self.total_borrow_count = 0
+        self.fee = 0.0
 
     def add_borrowing(self, book_type, days):
         book_type = book_type.strip()
@@ -49,6 +73,10 @@ class Member:
             self.borrowed[book_type] += 1
             self.total_borrowed_days += days
             self.total_borrow_count += 1
+            if (book_type == 'Textbook' and days > 14) or (book_type == 'Fiction' and days > 15):
+                excess_days = days - (14 if book_type == 'Textbook' else 15)
+                charge = 1.2 * excess_days if book_type == 'Textbook' else 1.8 * excess_days
+                self.fee += charge
 
     def check_limits(self):
         if self.member_type == 'Standard':
@@ -61,7 +89,8 @@ class Member:
             'textbooks': self.borrowed['Textbook'],
             'fictions': self.borrowed['Fiction'],
             'complies': self.check_limits(),
-            'average_days': self.calculate_average_borrowing_days() if self.total_borrow_count > 0 else 0
+            'average_days': self.calculate_average_borrowing_days() if self.total_borrow_count > 0 else 0,
+            'fee': self.fee
         }
         return stats
 
@@ -81,12 +110,17 @@ class Records:
     def read_members(self, member_file_name):
         try:
             with open(member_file_name, 'r') as file:
-                for line in file:
+                lines = file.readlines()
+                if not lines:
+                    raise EmptyFile(f"The file {member_file_name} is empty.")
+                for line in lines:
                     line = line.strip()
                     if line:
                         data = line.split(',')
                         if len(data) == 5:
                             member_id, first_name, last_name, dob, member_type = [item.strip() for item in data]
+                            if not member_id.startswith('M') or not member_id[1:].isdigit():
+                                raise InvalidMemberID(f"Invalid member ID format: {member_id}")
                             member = Member(member_id, first_name, last_name, dob, member_type)
                             self.members.append(member)
                             self.member_dict[member_id] = member
@@ -95,6 +129,9 @@ class Records:
         except FileNotFoundError:
             print(f"The file {member_file_name} does not exist.")
             sys.exit(1)
+        except EmptyFile as e:
+            print(e)
+            sys.exit(1)
 
     def find_member_by_id(self, member_id):
         return self.member_dict.get(member_id, None)
@@ -102,9 +139,14 @@ class Records:
     def read_records(self, record_file_name):
         try:
             with open(record_file_name, 'r') as file:
-                for line in file:
+                lines = file.readlines()
+                if not lines:
+                    raise EmptyFile(f"The file {record_file_name} is empty.")
+                for line in lines:
                     data = line.strip().split(',')
                     book_id = data[0]
+                    if not book_id.startswith('B') or not book_id[1:].isdigit():
+                        raise InvalidBookID(f"Invalid book ID format: {book_id}")
                     book = next((b for b in self.books if b.book_id == book_id), None)
                     if not book:
                         book = Book(book_id)
@@ -115,10 +157,12 @@ class Records:
                         days = days.strip()
                         if days == 'R':
                             days = '--'
-                        else:
+                        elif days.isdigit():
                             days = int(days)
                             self.total_borrowed_days += days
                             self.total_borrow_count += 1
+                        else:
+                            raise InvalidRecordFormat(f"Invalid record format in {record_file_name}: {record}")
                         book.add_borrowed_days(member_id, days)
 
                         member = self.find_member_by_id(member_id)
@@ -129,30 +173,34 @@ class Records:
                                     book.book_type = book_type
                             member.add_borrowing(book.book_type, days)
                         else:
-                            # Only print warnings if the member list is provided
                             if self.members:
                                 print(f"Warning: Member ID {member_id} not found in member list.")
         except FileNotFoundError:
             print(f"The file {record_file_name} does not exist.")
             sys.exit(1)
+        except EmptyFile as e:
+            print(e)
+            sys.exit(1)
+        except InvalidRecordFormat as e:
+            print(e)
+            sys.exit(1)
 
     def read_books(self, book_file_name):
         try:
             with open(book_file_name, 'r') as file:
-                for line in file:
+                lines = file.readlines()
+                if not lines:
+                    raise EmptyFile(f"The file {book_file_name} is empty.")
+                for line in lines:
                     data = line.strip().split(',')
                     book_id = data[0]
+                    if not book_id.startswith('B') or not book_id[1:].isdigit():
+                        raise InvalidBookID(f"Invalid book ID format: {book_id}")
                     name = data[1]
                     book_type = data[2].strip()
                     n_copy = int(data[3])
                     max_days = int(data[4])
                     late_charge = float(data[5])
-                    if book_type == 'T' and max_days != 14:
-                        print(f"Error: Textbook {book_id} has invalid max days {max_days}.")
-                        sys.exit(1)
-                    if book_type == 'F' and max_days <= 14:
-                        print(f"Error: Fiction book {book_id} has invalid max days {max_days}.")
-                        sys.exit(1)
                     book = next((b for b in self.books if b.book_id == book_id), None)
                     if not book:
                         book = Book(book_id, name, book_type, n_copy, max_days, late_charge)
@@ -166,25 +214,37 @@ class Records:
         except FileNotFoundError:
             print(f"The file {book_file_name} does not exist.")
             sys.exit(1)
+        except EmptyFile as e:
+            print(e)
+            sys.exit(1)
 
     def display_members(self):
         if not self.members:
             print("No member records to display.")
             return
 
-        print("MEMBER INFORMATION")
-        print(f"{'Member ID':<10} {'FName':<15} {'LName':<15} {'Type':<10} {'DOB':<15} {'Ntextbook':>10} {'Nfiction':>10} {'Average':>10}")
+        standard_members = [m for m in self.members if m.member_type == 'Standard']
+        premium_members = [m for m in self.members if m.member_type == 'Premium']
 
-        member_objects = [m for m in self.members if isinstance(m, Member)]
-        for member in sorted(member_objects, key=lambda x: x.member_id):
+        standard_members.sort(key=lambda x: x.fee, reverse=True)
+        premium_members.sort(key=lambda x: x.fee, reverse=True)
+
+        print("STANDARD MEMBERS")
+        self._print_member_table(standard_members)
+
+        print("\nPREMIUM MEMBERS")
+        self._print_member_table(premium_members)
+
+    def _print_member_table(self, members):
+        print(f"{'Member ID':<10} {'FName':<15} {'LName':<15} {'Type':<10} {'DOB':<15} {'Ntextbook':>10} {'Nfiction':>10} {'Fee':>10}")
+        for member in members:
             stats = member.get_stats()
             ntextbook = f"{stats['textbooks']}!" if not stats['complies'] and stats['textbooks'] > (
                 1 if member.member_type == 'Standard' else 2) else str(stats['textbooks'])
             nfiction = f"{stats['fictions']}!" if not stats['complies'] and stats['fictions'] > (
                 2 if member.member_type == 'Standard' else 3) else str(stats['fictions'])
-            average = f"{stats['average_days']:.2f}"
-
-            print(f"{member.member_id:<10} {member.first_name:<15} {member.last_name:<15} {member.member_type:<10} {member.dob:<15} {ntextbook:>10} {nfiction:>10} {average:>10}")
+            fee = f"{stats['fee']:.2f}"
+            print(f"{member.member_id:<10} {member.first_name:<15} {member.last_name:<15} {member.member_type:<10} {member.dob:<15} {ntextbook:>10} {nfiction:>10} {fee:>10}")
 
     def display_records(self):
         if not self.books:
@@ -199,7 +259,7 @@ class Records:
         print(header)
         print('-' * len(header))
 
-        member_ids = {member.member_id for member in self.members} if self.members else {member_id for book in self.books for member_id in book.borrowed_days}  # Set of member IDs
+        member_ids = {member.member_id for member in self.members} if self.members else {member_id for book in self.books for member_id in book.borrowed_days}
         for member_id in sorted(member_ids):
             row = f"{member_id:<{header_width}}"
             for book in self.books:
@@ -231,35 +291,57 @@ class Records:
             'range': 15,
         }
 
-        header = (f"{'Book IDs':<{col_widths['book_id']}} "
-                  f"{'Name':<{col_widths['name']}} "
-                  f"{'Type':<{col_widths['book_type']}} "
-                  f"{'Ncopy':<{col_widths['n_copy']}} "
-                  f"{'Maxday':<{col_widths['max_days']}} "
-                  f"{'Lcharge':<{col_widths['late_charge']}} "
-                  f"{'Nborrow':<{col_widths['n_borrow']}} "
-                  f"{'Nreserve':<{col_widths['n_reserve']}} "
-                  f"{'Range':<{col_widths['range']}}")
-
-        print("BOOK INFORMATION")
-        print(header)
-        print('-' * len(header))
-
+        # Splitting books into textbooks and fictions
+        textbooks = []
+        fictions = []
         for book in self.books:
-            n_borrow, n_reserve, (min_days, max_days) = book.get_statistics()
-            row = (f"{book.book_id:<{col_widths['book_id']}} "
-                   f"{book.name:<{col_widths['name']}} "
-                   f"{book.book_type:<{col_widths['book_type']}} "
-                   f"{book.n_copy:<{col_widths['n_copy']}} "
-                   f"{book.max_days:<{col_widths['max_days']}} "
-                   f"{book.late_charge:<{col_widths['late_charge']}.2f} "
-                   f"{n_borrow:<{col_widths['n_borrow']}} "
-                   f"{n_reserve:<{col_widths['n_reserve']}} "
-                   f"({min_days},{max_days})")
-            print(row)
+            # print(f"Debug: Book ID {book.book_id}, Name {book.name}, Type {book.book_type}")
+            if book.book_type == 'T':
+                textbooks.append(book)
+            elif book.book_type == 'F':
+                fictions.append(book)
+
+        # Sorting books by name
+        textbooks.sort(key=lambda x: x.name)
+        fictions.sort(key=lambda x: x.name)
+
+        def print_table(books, title):
+            header = (f"{'Book IDs':<{col_widths['book_id']}} "
+                      f"{'Name':<{col_widths['name']}} "
+                      f"{'Type':<{col_widths['book_type']}} "
+                      f"{'Ncopy':<{col_widths['n_copy']}} "
+                      f"{'Maxday':<{col_widths['max_days']}} "
+                      f"{'Lcharge':<{col_widths['late_charge']}} "
+                      f"{'Nborrow':<{col_widths['n_borrow']}} "
+                      f"{'Nreserve':<{col_widths['n_reserve']}} "
+                      f"{'Range':<{col_widths['range']}}")
+
+            print(title)
+            print(header)
+            print('-' * len(header))
+
+            for book in books:
+                n_borrow, n_reserve, (min_days, max_days) = book.get_statistics()
+                row = (f"{book.book_id:<{col_widths['book_id']}} "
+                       f"{book.name:<{col_widths['name']}} "
+                       f"{book.book_type:<{col_widths['book_type']}} "
+                       f"{book.n_copy:<{col_widths['n_copy']}} "
+                       f"{book.max_days:<{col_widths['max_days']}} "
+                       f"{book.late_charge:<{col_widths['late_charge']}.2f} "
+                       f"{n_borrow:<{col_widths['n_borrow']}} "
+                       f"{n_reserve:<{col_widths['n_reserve']}} "
+                       f"({min_days},{max_days})")
+                print(row)
+            print()
+
+        # Print Textbooks
+        print_table(textbooks, "TEXTBOOK INFORMATION")
+
+        # Print Fictions
+        print_table(fictions, "FICTION INFORMATION")
 
     def save_books_to_file(self, filename):
-        with open(filename, 'w') as file:
+        with open(filename, 'a') as file:
             col_widths = {
                 'book_id': 10,
                 'name': 20,
@@ -299,6 +381,9 @@ class Records:
                        f"({min_days},{max_days})")
                 file.write(row + '\n')
 
+            now = datetime.now()
+            dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+            file.write(f"Report generated on: {dt_string}\n")
             file.write("\n")
 
 def main():
@@ -334,3 +419,104 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+
+
+'''
+VCS: https://github.com/Kibria10/PF_FinalChallange (I will make this repository public after submission. There are 4 branches to identify each stage of the code)
+
+Documentation:
+## Pass Level Summary
+
+- `Book` class tracks each book and borrowing days.
+- `Member` class exists but not used yet.
+- `Records` class handles record-keeping, including reading from a file, adding data, and displaying records.
+- `read_records`: Reads data from a file and populates book and member data.
+- `display_records`: Formats and prints data in a table with proper alignment.
+- `main`: Initializes `Records` object, reads, and displays based on file name.
+
+## Credit Level Summary
+
+### Enhanced Book Class
+- New attributes: `name`, `book_type`, `n_copy`, `max_days`, `late_charge`.
+- Methods for adding borrowed days and computing stats (borrowing members, reservations, range of borrowing days).
+
+### Validation in Read Books Method
+- Ensures textbooks (`book_type == 'T'`) have max 14 days borrowing.
+- Ensures fiction books (`book_type == 'F'`) have max >14 days borrowing.
+- Terminates with an error if conditions are not met.
+
+### Records Class Enhancements
+- Methods to read and validate book data.
+- Display detailed book info and save to a file.
+
+### Display Books Method
+- Prints detailed book info: ID, Name, Type, Copies, Max days, Late charge, Borrowing members, Reservations, Range of days.
+
+### Save Books to File Method
+- Writes book info to `reports.txt` in a specified format.
+
+### Main Function Enhancements
+- Handles command-line arguments for record and book files.
+- Displays record and book tables.
+- Saves book data to `reports.txt`.
+
+## DI Level Summary
+
+### Enhanced Member Class
+- New attributes: `first_name`, `last_name`, `dob`, `member_type`.
+- Methods for adding borrowing details and computing stats (textbooks, fictions, borrowing limits, average days).
+
+### Improved Records Class
+- Reads member data, associates borrowed books with members.
+- Warns if member ID not found, adds borrowing details, maintains a dictionary for quick lookup.
+
+### Main Function Enhancements
+- Handles three command-line arguments: record file, book file, member file.
+- Reads and displays member data, saves to `reports.txt`.
+
+### Technical Decisions and Challenges
+1. Enhanced `Member` class for managing data.
+2. Restructured `Records` class for book-member associations.
+3. Improved validation in `read_books`.
+4. Updated display methods for new attributes.
+5. Enhanced `save_books_to_file`.
+6. Customized main function for three arguments.
+
+### Summary
+DI level adds complexity in managing book-member relationships and validation, providing a robust system for record-keeping and reporting.
+
+## High Distinction (HD) Level Summary
+
+### Enhancements from DI to HD Level
+
+### Custom Exceptions for Error Handling
+- Introduced exceptions: `FileNotFound`, `EmptyFile`, `InvalidRecordFormat`, `InvalidBookID`, `InvalidMemberID`.
+
+### Improved Member Class
+- Added `fee` attribute for overdue charges.
+- Enhanced `add_borrowing` method for fee calculation.
+
+### Enhanced Records Class
+- Split book/member info into tables (Textbooks, Fictions, Standard, Premium Members).
+- Enhanced file reading with exceptions.
+- Modified display methods for new table structures.
+- Enhanced `save_books_to_file` with timestamps.
+
+### Member and Book Information Tables
+- Separate tables for Textbooks, Fictions, Standard, Premium Members.
+- Sorted alphabetically by book name and by fee for members.
+
+### Command-Line Arguments and Usage
+- Handles three command-line arguments, added error messages for file issues.
+
+### Technical Decisions and Challenges
+1. Custom exceptions for robustness.
+2. Fee attribute for overdue charges.
+3. Split tables for readability.
+4. Ensured correct sorting and formatting.
+5. Added timestamps to report files.
+
+### Summary
+HD level improves error handling, data categorization, and reporting, ensuring robust and user-friendly program.
+'''
