@@ -1,5 +1,5 @@
 import sys
-
+import datetime as datetime
 # Class to represent a Book with its borrowing details and additional attributes
 class Book:
     def __init__(self, book_id, name=None, book_type=None, n_copy=None, max_days=None, late_charge=None):
@@ -24,16 +24,59 @@ class Book:
 
 # Class to represent a Member (currently not used for any specific purpose)
 class Member:
-    def __init__(self, member_id):
+    def __init__(self, member_id, first_name=None, last_name=None, dob=None, member_type=None):
         self.member_id = member_id
+        self.first_name = first_name
+        self.last_name = last_name
+        self.dob = datetime.strptime(dob, '%d-%b-%Y') if dob else None
+        self.member_type = member_type
+        self.borrowed = {'Textbook': 0, 'Fiction': 0}
+
+    def add_borrowing(self, book_type, days):
+        self.borrowed[book_type] += 1
+
+    def check_limits(self):
+        if self.member_type == 'Standard':
+            return (self.borrowed['Textbook'] <= 1 and self.borrowed['Fiction'] <= 2)
+        elif self.member_type == 'Premium':
+            return (self.borrowed['Textbook'] <= 2 and self.borrowed['Fiction'] <= 3)
+
+    def get_stats(self):
+        # Calculate the average borrowing days if applicable
+        return {
+            'textbooks': self.borrowed['Textbook'],
+            'fictions': self.borrowed['Fiction'],
+            'complies': self.check_limits()
+        }
+
 
 # Class to manage the records of books and members
 class Records:
     def __init__(self):
         self.books = []
-        self.members = set()
+        self.members = {}
         self.total_borrowed_days = 0
         self.total_borrow_count = 0
+
+    def read_members(self, member_file_name):
+        try:
+            with open(member_file_name, 'r') as file:
+                for line in file:
+                    data = line.strip().split(',')
+                    member_id, first_name, last_name, dob, member_type = data
+                    member = Member(member_id, first_name, last_name, dob, member_type)
+                    self.members[member_id] = member
+        except FileNotFoundError:
+            print(f"The file {member_file_name} does not exist.")
+            sys.exit(1)
+
+    def display_members(self):
+        # This will display member information with compliance checks
+        print("MEMBER INFORMATION")
+        for member_id, member in self.members.items():
+            stats = member.get_stats()
+            print(
+                f"{member_id} - {member.first_name} {member.last_name}, Type: {member.member_type}, Complies: {'Yes' if stats['complies'] else 'No'}")
 
     def read_records(self, record_file_name):
         try:
@@ -208,11 +251,12 @@ class Records:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python my_record.py <record_file_name> [<book_file_name>]")
+        print("Usage: python my_record.py <record_file_name> [<book_file_name> [<member_file_name>]]")
         return
 
     record_file_name = sys.argv[1]
     book_file_name = sys.argv[2] if len(sys.argv) > 2 else None
+    member_file_name = sys.argv[3] if len(sys.argv) > 3 else None
 
     records = Records()
     records.read_records(record_file_name)
@@ -221,8 +265,10 @@ def main():
     if book_file_name:
         records.read_books(book_file_name)
         records.display_books()
-        records.save_books_to_file('reports.txt')  # Save book information to reports.txt
+
+    if member_file_name:
+        records.read_members(member_file_name)
+        records.display_members()
 
 if __name__ == "__main__":
     main()
-
