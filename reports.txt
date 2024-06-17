@@ -7,3 +7,63 @@ B04         Programming         T          10     14       1.20       4        0
 B06         Dune                F          7      15       1.80       2        1          (5,8)
 B07         Maths               T          10     14       1.20       4        0          (1,12)
 
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:25:22
+
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:26:35
+
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:29:42
+
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:35:11
+
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:38:27
+
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python              T          5      14       1.20       2        1          (2,7)
+B03         Hamlet              F          8      20       1.50       2        1          (2,8)
+B04         Programming         T          10     14       1.20       4        0          (1,10)
+B06         Dune                F          7      15       1.80       2        1          (5,8)
+B07         Maths               T          10     14       1.20       4        0          (1,12)
+Report generated on: 17/06/2024 22:40:47
+
