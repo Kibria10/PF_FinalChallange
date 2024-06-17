@@ -1,5 +1,5 @@
 import sys
-import datetime as datetime
+
 # Class to represent a Book with its borrowing details and additional attributes
 class Book:
     def __init__(self, book_id, name=None, book_type=None, n_copy=None, max_days=None, late_charge=None):
@@ -25,11 +25,11 @@ class Book:
 # Class to represent a Member (currently not used for any specific purpose)
 class Member:
     def __init__(self, member_id, first_name=None, last_name=None, dob=None, member_type=None):
-        self.member_id = member_id
-        self.first_name = first_name
-        self.last_name = last_name
-        self.dob = datetime.strptime(dob, '%d-%b-%Y') if dob else None
-        self.member_type = member_type
+        self.member_id = member_id.strip()
+        self.first_name = first_name.strip()
+        self.last_name = last_name.strip()
+        self.dob = dob.strip()  # Store the date of birth as a string without conversion
+        self.member_type = member_type.strip()
         self.borrowed = {'Textbook': 0, 'Fiction': 0}
 
     def add_borrowing(self, book_type, days):
@@ -42,7 +42,6 @@ class Member:
             return (self.borrowed['Textbook'] <= 2 and self.borrowed['Fiction'] <= 3)
 
     def get_stats(self):
-        # Calculate the average borrowing days if applicable
         return {
             'textbooks': self.borrowed['Textbook'],
             'fictions': self.borrowed['Fiction'],
@@ -54,7 +53,7 @@ class Member:
 class Records:
     def __init__(self):
         self.books = []
-        self.members = {}
+        self.members = set()  # Using set to store members
         self.total_borrowed_days = 0
         self.total_borrow_count = 0
 
@@ -62,21 +61,31 @@ class Records:
         try:
             with open(member_file_name, 'r') as file:
                 for line in file:
-                    data = line.strip().split(',')
-                    member_id, first_name, last_name, dob, member_type = data
-                    member = Member(member_id, first_name, last_name, dob, member_type)
-                    self.members[member_id] = member
+                    line = line.strip()
+                    if line:  # Ensure the line is not empty
+                        data = line.split(',')
+                        if len(data) == 5:
+                            member_id, first_name, last_name, dob, member_type = [item.strip() for item in data]
+                            member = Member(member_id, first_name, last_name, dob, member_type)
+                            self.members.add(member)
+                        else:
+                            print(f"Skipping incomplete or malformed line: {line}")
         except FileNotFoundError:
             print(f"The file {member_file_name} does not exist.")
             sys.exit(1)
 
+    def find_member_by_id(self, member_id):
+        return next((member for member in self.members if member.member_id == member_id), None)
+
     def display_members(self):
-        # This will display member information with compliance checks
         print("MEMBER INFORMATION")
-        for member_id, member in self.members.items():
-            stats = member.get_stats()
-            print(
-                f"{member_id} - {member.first_name} {member.last_name}, Type: {member.member_type}, Complies: {'Yes' if stats['complies'] else 'No'}")
+        for member in self.members:
+            if isinstance(member, Member):
+                stats = member.get_stats()
+                print(
+                    f"{member.member_id} - {member.first_name} {member.last_name}, Type: {member.member_type}, Complies: {'Yes' if stats['complies'] else 'No'}")
+            else:
+                print(f"Non-member object found: {member}")
 
     def read_records(self, record_file_name):
         try:
