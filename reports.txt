@@ -1,0 +1,9 @@
+BOOK INFORMATION
+Book IDs   Name                 Type       Ncopy  Maxday   Lcharge    Nborrow  Nreserve   Range          
+---------------------------------------------------------------------------------------------------------
+B01         Python               T         5      14       1.20       2        1          (2,7)
+B03         Hamlet               F         8      20       1.50       2        1          (2,8)
+B04         Programming          T         10     14       1.20       4        0          (1,10)
+B06         Dune                 F         7      15       1.80       2        1          (5,8)
+B07         Maths                T         10     14       1.20       4        0          (1,12)
+
